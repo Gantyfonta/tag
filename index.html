@@ -127,7 +127,8 @@ function drawMenu(){
  for(let i=0;i<4;i++){const x=157+i*204,on=en[i],y=195+(on?Math.sin(t*3+i)*3:0);
   rr(x,y,158,90,'#fff');rr(x+8,y+8,142,74,on?PL[i].c:'#2f5a25');
   tx(on?(ai[i]?'CPU':PL[i].t):'CLICK',x+79,y+45,on?24:14,on?'#fff':'#9fd07a',on?'#000':null,6);
-  if(on){tx('<',x+18,y+45,14,'#fff','#000',4);tx('>',x+140,y+45,14,'#fff','#000',4)}}
+  if(on){tx('<',x+18,y+45,14,'#fff','#000',4);tx('>',x+140,y+45,14,'#fff','#000',4);
+  tx('WINS: '+(PL[i].wins||0),x+79,y+70,11,'#fff','#000',4);}}
  const T=(t,y,big)=>{RT[y]=t;tx(t,500,y,big||20,'#d5f5ae','#3d7a28',7)};
  T('MODE: < '+MODES[M]+' >',rows[0].y);T('MAP: < '+MAPK[mapI]+' >',rows[1].y);
  T(M==0?'FUSE: < '+FUSES[fuseI]+' >':'TIME: < '+fmt(TIMES[timeI[M]]*60)+' >',rows[2].y);
@@ -157,6 +158,7 @@ function start(){
  sparks=[];parts=[];winner=null;it=null;crown=null;fade=30;boxes=[];bxT=150;hill=null;hillT=0;
  timeLeft=M?TIMES[timeI[chaos?6:M]]*60:0;last15=false;
  if(M<2||M==4)giveIt(120);else if(M==2)crown={x:[WW/2-9,WW/2-70,WW/2+60,WW/2-140,WW/2+120].find(q=>!inSolid({x:q,y:30,w:18,h:14}))||WW/2-9,y:30,w:18,h:14,vx:0,vy:0,own:null,pick:20,prot:0};else if(M==3)ps[Math.floor(Math.random()*ps.length)].inf=true;else ps.slice().sort(()=>Math.random()-.5).slice(0,2).forEach(p=>p.ch=true);
+ if(M==5)ps.forEach(p=>p.cg=p.ch?1:2);
  ps.forEach(p=>p.s0=[p.x,p.y]);
  if(ps.some(p=>p.ai))buildNav();
  S='game'}
@@ -173,7 +175,7 @@ function move1(p,dx,dy){
   if(dy>0){p.y=s.y-p.h;p.ground=true;p.on=s;p.vy=0}else if(dy<0){p.y=s.y+s.h;p.vy=0}}}
 function dust(x,y,n,c){for(let i=0;i<n;i++)parts.push({x,y,vx:Math.random()*3-1.5,vy:-Math.random()*1.5,l:20+Math.random()*10,c:c||'#e5f7c8',s:3,g:.05})}
 function boom(p){shake=14;for(let i=0;i<40;i++){const a=Math.random()*6.28,v=1+Math.random()*6;parts.push({x:p.x+11,y:p.y+11,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:40+Math.random()*30,c:['#fff','#f7b51e','#e74642',p.d.c][i%4],s:5,g:.15})}}
-function endG(w,t){winner=w;msg=t;S='over'}
+function endG(w,t){if(w)w.d.wins=(w.d.wins||0)+1;winner=w;msg=t;S='over'}
 function step(){
  if(shake>0)shake*=.9;
  for(const p of ps){if(!p.alive)continue;const k=p.d.k,isIt=it===p,ho=crown&&crown.own===p;
@@ -222,12 +224,15 @@ function step(){
   const ins=ps.filter(q=>q.alive&&hit(hill,q));hill.occ=ins.length;hill.who=ins.length==1?ins[0]:null;
   if(ins.length==1){ins[0].score+=1/3;if(fr%10==0)dust(ins[0].x+ins[0].w/2,ins[0].y,1,'#ffd23c')}
   const top=ps.reduce((a,b)=>b.score>a.score?b:a);if(top.score>=GOALS[goalI])endG(top,top.d.n+' WINS!')}
- if(M==5){
-  const c=ps.filter(p=>p.ch);
-  for(const a of c)for(const o of ps)if(o.alive&&!o.ch&&hit({x:a.x-2,y:a.y-2,w:a.w+4,h:a.h+4},o)){o.alive=false;boom(o)}
-  if(c.length==2){const[a,b]=c,dx=b.x+b.w/2-a.x-a.w/2,dy=b.y+b.h/2-a.y-a.h/2,d=Math.hypot(dx,dy);
+ const grps={};for(const p of ps)if(p.alive&&p.cg)(grps[p.cg]=grps[p.cg]||[]).push(p);
+ for(const id in grps){const g=grps[id];
+  for(let i=0;i<g.length-1;i++){const a=g[i],b=g[i+1],dx=b.x+b.w/2-a.x-a.w/2,dy=b.y+b.h/2-a.y-a.h/2,d=Math.hypot(dx,dy);
    if(d>CH){const e=(d-CH)/2,nx=dx/d,ny=dy/d;move(a,nx*e,0);move(a,0,ny*e);move(b,-nx*e,0);move(b,0,-ny*e);
-    const rv=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;if(rv>0){a.vx+=nx*rv/2;a.vy+=ny*rv/2;b.vx-=nx*rv/2;b.vy-=ny*rv/2}}}
+    const rv=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;if(rv>0){a.vx+=nx*rv/2;a.vy+=ny*rv/2;b.vx-=nx*rv/2;b.vy-=ny*rv/2}}}}
+ if(M==5){
+  const c=ps.filter(p=>p.ch&&p.alive), run=ps.filter(p=>!p.ch&&p.alive);
+  let k=false;for(const a of c)for(const o of run)if(hit({x:a.x-2,y:a.y-2,w:a.w+4,h:a.h+4},o))k=true;
+  if(k)for(const o of ps)if(!o.ch&&o.alive){o.alive=false;boom(o)}
   if(!ps.some(p=>p.alive&&!p.ch))endG(null,'CHASERS WIN!')}
  if(M==3){
   for(const a of ps)if(a.inf&&a.alive)for(const o of ps)if(!o.inf&&o.alive&&hit({x:a.x-2,y:a.y-2,w:a.w+4,h:a.h+4},o)){o.inf=true;shake=6;dust(o.x+11,o.y+11,10,'#9b4fe0')}
@@ -270,11 +275,10 @@ function step(){
  const cs=M==0?(it?String(Math.ceil(fuse/60)):''):fmt(timeLeft);if(cs!=lastS){lastS=cs;popFr=fr}}
 function vfree(x,y1,y2){for(let y=y1;y<=y2;y+=6)if(inSolid({x:x-BS/2,y,w:BS,h:BS}))return false;return true}
 function jumpOK(a,b){let x=a.x,y=a.y,vy=-10.6*JM;const d=Math.sign(b.x-a.x),h=BS/2;
- for(let f=0;f<100;f++){const py=y;if(d)x+=d*Math.min(3*SPDM,Math.abs(b.x-x));vy=Math.min(vy+.5,12);y+=vy;
-  if(vy>0&&py<=b.y&&y>=b.y&&Math.abs(x-b.x)<=10)return true;
-  if(inSolid({x:x-h,y,w:BS,h:BS})||y>b.y+40)return false}
- return false}
-function buildNav(){NV=[];const h=BS/2,MA=Math.min(24,Math.ceil(6*SPDM*JM));
+ for(let f=0;f<100;f++){const py=y;if(d)x+=d*3*SPDM;vy=Math.min(vy+.5,12);y+=vy;
+  if(vy>0&&py<=b.y&&y>=b.y&&Math.abs(x-b.x)<=25)return true;
+  if(inSolid({x:x-h,y,w:BS,h:BS})||y>b.y+100)return false}
+ return false}function buildNav(){NV=[];const h=BS/2,MA=Math.min(24,Math.ceil(6*SPDM*JM));
  for(let cx=0;cx<Math.ceil(WW/20);cx++){const x=cx*20+10;
   for(const s of solids){const b={x:x-h,y:s.y-BS,w:BS,h:BS};
    if(s.y>30&&s.x<b.x+b.w-4&&s.x+s.w>b.x+4&&!inSolid(b)&&!NV.some(n=>n.cx==cx&&Math.abs(n.y-b.y)<3))NV.push({cx,x,y:b.y})}}
@@ -282,7 +286,7 @@ function buildNav(){NV=[];const h=BS/2,MA=Math.min(24,Math.ceil(6*SPDM*JM));
  NV.forEach((a,i)=>NV.forEach((b,j)=>{const dc=b.cx-a.cx,dy=b.y-a.y,ad=Math.abs(dc);if(i==j||ad>MA)return;
   if(ad==1&&Math.abs(dy)<=8){NE[i].push({t:j,k:'w',c:1});return}
   if(ad==1&&dy>8&&!inSolid({x:a.x+dc*20-h,y:a.y,w:BS,h:BS})&&vfree(b.x,a.y,b.y)){NE[i].push({t:j,k:'f',c:2+dy/40});return}
-  if((ad>=2||Math.abs(dy)>8)&&dy>=-108*JM*JM&&dy<=140&&jumpOK(a,b))NE[i].push({t:j,k:'j',c:3+ad*.3})}))}
+if((ad>=2||Math.abs(dy)>8)&&dy>=-108*JM*JM&&dy<=600&&jumpOK(a,b))NE[i].push({t:j,k:'j',c:3+ad*.3})}))}
 function dij(s){const n=NV.length,D=Array(n).fill(1e9),P=Array(n).fill(-1),Q=Array(n).fill(false);D[s]=0;
  for(;;){let u=-1,m=1e9;for(let i=0;i<n;i++)if(!Q[i]&&D[i]<m){m=D[i];u=i}if(u<0||m>220)break;Q[u]=true;
   for(const e of NE[u])if(D[u]+e.c<D[e.t]){D[e.t]=D[u]+e.c;P[e.t]=u}}
@@ -297,7 +301,7 @@ function aiGoal(p){const al=ps.filter(o=>o!==p&&o.alive);
 function newHill(){let c=solids.filter(q=>!q.sl&&q.t!=2&&q.w>=100&&q.y>40&&q.y<HH-40&&!(hill&&hill.pl===q));if(!c.length)c=[solids[1]];
  const q=c[Math.floor(Math.random()*c.length)],x=Math.max(14,Math.min(q.x+q.w/2-60,WW-134));
  hill={x,y:q.y-50,w:120,h:50,pl:q,occ:0,who:null};hillT=720;shake=6;dust(x+60,q.y-20,12,'#fff')}
-const FXN=['SHIELD','GROW','SHRINK','SPEED UP','HIGH JUMP','AIR PLATFORM','SLOWED','TURBO','SWAP!','FROZEN!','BOMB!','INFECTED!'];
+const FXN=['SHIELD','GROW','SHRINK','SPEED UP','HIGH JUMP','AIR PLATFORM','SLOWED','TURBO','SWAP!','FROZEN!','BOMB!','INFECTED!','CHAINED!'];
 function thaw(){for(const f of ps){if(!f.alive||!f.fz)continue;let n=0;const rc={x:f.x-4,y:f.y-4,w:f.w+8,h:f.h+8};
  for(const o of ps)if(o!==f&&o.alive&&!o.fz&&hit(rc,o)){n++;if(o.vx*(f.x-o.x)>0){move(f,o.vx,0);wrapP(f)}}
  f.thaw=Math.min(1,Math.max(0,f.thaw+(n?n/90:-1/240)));
@@ -313,22 +317,28 @@ function bombs(){
  const al=ps.filter(q=>q.alive);
  if(al.length<=1)endG(al[0]||null,al[0]?al[0].d.n+' WINS!':'NO SURVIVORS');
  else if(al.every(q=>q.fz))endG(null,'ALL FROZEN! NO WINNER')}
-function fxApply(p){const i=Math.floor(Math.random()*12);p.fx={t:FXN[i],l:90};
+function fxApply(p){const i=Math.floor(Math.random()*13);p.fx={t:FXN[i],l:90};
  if(i==0)p.shield=1800;else if(i==1){p.big=1200;p.sml=0}else if(i==2){p.sml=1200;p.big=0}else if(i==3)p.boost=360;else if(i==4)p.jb=480;else if(i==5)p.plat=1;else if(i==6)p.slow=300;else if(i==7)p.fast=300;
  else if(i==9){p.fz=true;p.thaw=0;p.vx=0;p.dash=0}
  else if(i==10){p.bt=600;p.bcd=40}
  else if(i==11){if(M==1){it=null;M=3;last15=false}p.inf=true;shake=10}
- else{const a=ps.filter(q=>q.alive),pos=a.map(q=>({x:q.x+q.w/2,fy:q.y+q.h}));
-  for(let n=a.length-1;n>0;n--){const j=Math.floor(Math.random()*(n+1));[pos[n],pos[j]]=[pos[j],pos[n]]}
+ else if(i==12){
+  const al=ps.filter(q=>q!==p&&q.alive);
+  if(al.length){const t=al[Math.floor(Math.random()*al.length)];
+   p.x=t.x;p.y=t.y-t.h;
+   if(!t.cg)t.cg=Math.random();p.cg=t.cg;
+   shake=8;dust(p.x+11,p.y+11,15,'#999')}
+ }
+ else{const a=ps.filter(q=>q.alive),pos=a.map(q=>({x:q.x+q.w/2,fy:q.y+q.h}));  for(let n=a.length-1;n>0;n--){const j=Math.floor(Math.random()*(n+1));[pos[n],pos[j]]=[pos[j],pos[n]]}
   if(a.length>1&&a.every((q,n)=>pos[n].x==q.x+q.w/2))pos.push(pos.shift());
   a.forEach((q,n)=>{q.x=pos[n].x-q.w/2;q.y=pos[n].fy-q.h;for(let t=0;t<40&&inSolid(q);t++)q.y-=1;q.vx=q.vy=0;dust(q.x+q.w/2,q.y+q.h/2,8,'#fff')});shake=8}}
 function los(a,b){const x1=a.x+a.w/2,y1=a.y+a.h/2,x2=b.x+b.w/2,y2=b.y+b.h/2,n=Math.ceil(Math.hypot(x2-x1,y2-y1)/10);
  for(let i=1;i<n;i++){const x=x1+(x2-x1)*i/n,y=y1+(y2-y1)*i/n;if(solids.some(s=>s.t!=2&&x>s.x&&x<s.x+s.w&&y>s.y&&y<s.y+s.h))return false}return true}
 // AI: hunters explore the map like a maze until they spot someone, then path to them.
 // Runners pick a far-away spot, path to it, and pick a new one on the opposite side when the tagger gets close.
-function nearN(D,x,y){let g=-1,bs=1e9;NV.forEach((n,i)=>{if(D[i]<1e9){const d=Math.hypot(n.x-x,(n.y+BS-y)*1.3)+D[i]*2;if(d<bs){bs=d;g=i}}});return g}
+function nearN(D,x,y){let g=-1,bs=1e9;NV.forEach((n,i)=>{if(D[i]<1e9){const d=Math.abs(n.x-x)+Math.abs(n.y+BS-y)*8+D[i];if(d<bs){bs=d;g=i}}});return g}
 function aiThink(p,cur){
- p.rp=26+(Math.random()*12|0);
+ p.rp=12+(Math.random()*6|0);
  if(cur<0)return;
  const G=aiGoal(p);if(!G){p.path=null;return}
  const{D,P}=dij(cur),cx=p.x+p.w/2,fy=p.y+p.h;let goal=-1;
@@ -370,8 +380,8 @@ function aiAct(p){const k=p.d.k,a=p.ak;a[k.l]=a[k.r]=a[k.u]=a[k.a]=0;
  let dir=0,jmp=0;const t=p.tg;
  if(p.st==1&&t&&Math.abs(t.x+t.w/2-cx)<90&&Math.abs(t.y+t.h-feet)<45){dir=Math.sign(t.x+t.w/2-cx);if(t.y+t.h<feet-26&&p.ground)jmp=1}
  else if(p.path){const i=p.pi,A=NV[p.path[i]],B=NV[p.path[i+1]],kd=p.pe[i];
-  if(p.ground){if(kd=='j'){if(Math.abs(cx-A.x)>4)dir=Math.sign(A.x-cx);else{dir=Math.sign(B.x-cx);jmp=1}}else dir=Math.abs(B.x-cx)<2?0:Math.sign(B.x-cx)}
-  else{dir=Math.abs(B.x-cx)<3?0:Math.sign(B.x-cx);if(p.vy<0&&kd=='j')jmp=1}}
+  if(p.ground){if(kd=='j'){if(Math.abs(cx-A.x)>12)dir=Math.sign(A.x-cx);else{dir=Math.sign(B.x-cx);jmp=1}}else dir=Math.abs(B.x-cx)<2?0:Math.sign(B.x-cx)}
+  else{dir=Math.abs(B.x-cx)<3?0:Math.sign(B.x-cx);if(kd=='j'){if(p.vy<0)jmp=1;if(p.vy>0&&B.y<p.y&&p.jumps<2&&optV[0])jmp=1;}}}
  else if(p.ground&&cur<0&&p.rj<=0){p.rj=20;p.rd=Math.random()<.5?-1:1}
  if(M==7&&hill&&hill.occ>1&&hit(hill,p)){const o=ps.find(q=>q!==p&&q.alive&&hit(hill,q));if(o){dir=Math.sign(o.x+o.w/2-cx);if(Math.abs(o.x-p.x)<46&&!(p.shCd>0))p.shoveReq=dir||1}}
  if(fr%45==p.i*7%45){if(Math.abs(p.x-p.sx)+Math.abs(p.y-p.sy)<4&&(p.path||p.st==1)&&!(p.st==1&&t&&Math.hypot(t.x-p.x,t.y-p.y)<60)){p.rj=22;p.rd=Math.random()<.5?-1:1;p.path=null}p.sx=p.x;p.sy=p.y}
@@ -412,8 +422,10 @@ function drawGame(){
   ctx.strokeStyle=c;ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.strokeRect(h.x,h.y,h.w,h.h);ctx.setLineDash([]);
   tx(h.occ>1?'CONTESTED':'HILL',h.x+h.w/2,h.y-8,10,'#fff','#000',4)}
  for(const b of boxes){const z=Math.min(1,b.age/12),bob=Math.sin(fr/10+b.x)*2;ctx.save();ctx.translate(b.x+9,b.y+9+bob);ctx.scale(z,z);rr(-9,-9,18,18,'#ffd23c','#000',3);tx('?',0,1,10,'#000');ctx.restore()}
- if(M==5){const c=ps.filter(p=>p.ch&&p.alive);if(c.length==2){const[a,b]=c,ax=a.x+a.w/2,ay=a.y+a.h/2,bx=b.x+b.w/2,by=b.y+b.h/2,d=Math.hypot(bx-ax,by-ay),sg=Math.max(0,CH-d)*.5*(1+.1*Math.sin(fr/9));
-  for(let i=0;i<=10;i++){const t=i/10;ctx.fillStyle=i%2?'#ddd':'#999';ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.beginPath();ctx.arc(ax+(bx-ax)*t,ay+(by-ay)*t+Math.sin(Math.PI*t)*sg,4,0,7);ctx.fill();ctx.stroke()}}}
+ const grps={};for(const p of ps)if(p.alive&&p.cg)(grps[p.cg]=grps[p.cg]||[]).push(p);
+ for(const id in grps){const g=grps[id];
+  for(let j=0;j<g.length-1;j++){const a=g[j],b=g[j+1],ax=a.x+a.w/2,ay=a.y+a.h/2,bx=b.x+b.w/2,by=b.y+b.h/2,d=Math.hypot(bx-ax,by-ay),sg=Math.max(0,CH-d)*.5*(1+.1*Math.sin(fr/9));
+   for(let i=0;i<=10;i++){const t=i/10;ctx.fillStyle=i%2?'#ddd':'#999';ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.beginPath();ctx.arc(ax+(bx-ax)*t,ay+(by-ay)*t+Math.sin(Math.PI*t)*sg,4,0,7);ctx.fill();ctx.stroke()}}}
  for(const p of ps){if(!p.alive)continue;const isIt=it===p;
   if(isIt&&p.mag>0){ctx.strokeStyle='#fff';ctx.lineWidth=4;ctx.globalAlpha=.7;ctx.beginPath();ctx.arc(p.x+11,p.y+11,170*(1-p.mag/22)+10,0,7);ctx.stroke();ctx.globalAlpha=1}
   if(p.boost>0){ctx.fillStyle='#ffd23c';ctx.fillRect(p.x-6,p.y+16,4,3);ctx.fillRect(p.x-12,p.y+8,4,3)}
@@ -457,7 +469,8 @@ function loop(){
   drawGame();
   if(S=='over'){ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(0,0,W,H);
    tx(msg,500,240+Math.sin(fr/10)*6,44,winner?winner.d.c:'#fff','#000',12);
-   tx('ENTER / CLICK FOR MENU',500,310,16,'#fff','#000',6)}}
+   if(winner) tx('TOTAL WINS: '+winner.d.wins,500,285,18,'#ffd23c','#000',6);
+   tx('ENTER / CLICK FOR MENU',500,320,16,'#fff','#000',6)}}
  requestAnimationFrame(loop)}
 loadCus();loop();
 </script></body></html>
